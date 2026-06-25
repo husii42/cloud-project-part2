@@ -71,8 +71,7 @@ stages:
                   -backend-config="key=$(tfStateKey)"
 
                 terraform validate
-                terraform plan -out=tfplan -input=false
-
+                terraform plan -out=tfplan -input=false -var="project_name=$(PROJECT_NAME)" -var="environment=dev"
           - publish: tfplan
             artifact: tfplan
             displayName: "Publish plan artifact"
