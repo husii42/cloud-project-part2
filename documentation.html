@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud & DevOps Project – Documentation</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      max-width: 860px;
+      margin: 60px auto;
+      padding: 0 40px;
+      color: #222;
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 48px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    h3 { font-size: 16px; margin-top: 28px; margin-bottom: 6px; }
+
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 40px; }
+
+    p { margin: 12px 0; }
+
+    pre {
+      background: #f4f4f4;
+      border-left: 3px solid #999;
+      padding: 14px 18px;
+      font-family: monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+
+    code {
+      font-family: monospace;
+      background: #f4f4f4;
+      padding: 1px 5px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+
+    th {
+      text-align: left;
+      border-bottom: 2px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    td {
+      border-bottom: 1px solid #eee;
+      padding: 8px 12px;
+      vertical-align: top;
+    }
+
+    .note {
+      background: #fffbea;
+      border-left: 3px solid #e6b800;
+      padding: 10px 16px;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    footer {
+      margin-top: 80px;
+      border-top: 1px solid #ccc;
+      padding-top: 16px;
+      font-size: 13px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cloud & DevOps Engineering – Part I</h1>
+  <p class="subtitle">Aalen University &nbsp;·&nbsp; Infrastructure as Code with Terraform on Azure &nbsp;·&nbsp; Hüseyin Simsek</p>
+
+  <!-- 1. WHAT IS THIS -->
+  <h2>1. What is this?</h2>
+  <p>
+    This project provisions a cloud infrastructure on Microsoft Azure using Terraform — an Infrastructure as Code (IaC) tool.
+    Instead of manually creating resources in the Azure Portal, everything is defined in code and deployed automatically.
+  </p>
+  <p>The following Azure resources are created:</p>
+  <table>
+    <tr><th>Resource</th><th>Name</th><th>Purpose</th></tr>
+    <tr><td>Resource Group</td><td>rg-&lt;name&gt;-dev</td><td>Container for all resources</td></tr>
+    <tr><td>Storage Account</td><td>st&lt;name&gt;dev</td><td>Stores uploaded images</td></tr>
+    <tr><td>Storage Container</td><td>images</td><td>Blob container inside the Storage Account</td></tr>
+    <tr><td>Key Vault</td><td>kv-&lt;name&gt;-dev</td><td>Stores sensitive credentials securely</td></tr>
+    <tr><td>App Service Plan</td><td>asp-&lt;name&gt;-dev</td><td>The underlying compute for the web app</td></tr>
+    <tr><td>Web App</td><td>app-&lt;name&gt;-dev</td><td>Hosts the web application (Part II)</td></tr>
+  </table>
+
+  <!-- 2. PREREQUISITES -->
+  <h2>2. Prerequisites</h2>
+  <p>The following tools must be installed before running the Terraform definition:</p>
+  <table>
+    <tr><th>Tool</th><th>Version</th><th>Download</th></tr>
+    <tr><td>Terraform</td><td>≥ 1.5.0</td><td>https://developer.hashicorp.com/terraform/install</td></tr>
+    <tr><td>Azure CLI</td><td>latest</td><td>https://learn.microsoft.com/cli/azure/install-azure-cli</td></tr>
+    <tr><td>Git</td><td>any</td><td>https://git-scm.com</td></tr>
+    <tr><td>Azure Subscription</td><td>active</td><td>A student subscription is sufficient</td></tr>
+  </table>
+
+  <div class="note">
+    On Windows, if PowerShell does not recognise the <code>terraform</code> command after installation,
+    add the installation path manually to the system PATH:
+    <pre>$env:path += ";C:\Program Files\Terraform"</pre>
+    Restart PowerShell afterwards.
+  </div>
+
+  <h3>How to Run</h3>
+  <pre># 1. Clone the repository
+git clone https://github.com/husii42/cloud-project.git
+cd cloud-project
+
+# 2. (Windows only) Add Terraform to PATH if not recognised
+$env:path += ";C:\Program Files\Terraform"
+# Restart PowerShell afterwards
+
+# 3. Create the variables file and set a unique project_name
+cp terraform.tfvars.example terraform.tfvars
+notepad terraform.tfvars
+
+# 4. Authenticate with Azure
+az login
+
+# 5. Initialise Terraform (downloads the Azure provider)
+terraform init
+
+# 6. Preview what will be created
+terraform plan
+
+# 7. Deploy the infrastructure
+terraform apply</pre>
+
+  <div class="note">
+    The <code>project_name</code> in <code>terraform.tfvars</code> must be globally unique and contain only lowercase letters and numbers —
+    it becomes part of the Storage Account name (e.g. <code>stmyname42dev</code>).
+  </div>
+
+  <!-- 3. REPOSITORY STRUCTURE -->
+  <h2>3. Repository Structure</h2>
+  <pre>cloud-project/
+├── main.tf                   # Root module – connects all modules together
+├── variables.tf              # Input variables (project_name, environment, location)
+├── outputs.tf                # Values displayed after terraform apply
+├── providers.tf              # Azure provider version and configuration
+├── terraform.tfvars.example  # Template for local variables (copy to .tfvars)
+├── .gitignore                # Excludes state files and .tfvars from Git
+└── modules/
+    ├── storage/
+    │   ├── main.tf           # Creates Storage Account and images container
+    │   ├── variables.tf      # Input variables for the module
+    │   └── outputs.tf        # Exports storage name, endpoint, access key
+    ├── keyvault/
+    │   ├── main.tf           # Creates Key Vault, access policies and secrets
+    │   ├── variables.tf      # Input variables for the module
+    │   └── outputs.tf        # Exports Key Vault name and URI
+    └── appservice/
+        ├── main.tf           # Creates App Service Plan and Web App
+        ├── variables.tf      # Input variables for the module
+        └── outputs.tf        # Exports hostname and Managed Identity ID</pre>
+
+  <h3>How the files work together</h3>
+<p>
+  The flow starts with <code>terraform.tfvars</code>, which provides the actual values
+  (project name, region, environment). <code>variables.tf</code> defines which values
+  are expected and sets default values if none are provided.
+</p>
+<p>
+  <code>providers.tf</code> tells Terraform which cloud provider to use (Azure) and
+  which version of the provider to download during <code>terraform init</code>.
+  It also configures the Azure CLI as the authentication method — no credentials
+  need to be stored in any file.
+</p>
+<p>
+  <code>main.tf</code> is the orchestrator. It creates the Resource Group directly
+  and then calls each module, passing the required values as inputs. It also connects
+  module outputs to other modules where needed — for example, the Storage Account
+  access key is read from the storage module output and passed into the Key Vault
+  module as an input, which then stores it as a secret automatically.
+</p>
+<p>
+  Each module follows the same pattern:
+</p>
+<pre>variables.tf   ← receives inputs from root main.tf
+main.tf        ← uses those inputs to create Azure resources
+outputs.tf     ← exposes values that root main.tf or other modules can use</pre>
+<p>
+  After <code>terraform apply</code> completes, <code>outputs.tf</code> in the root
+  module collects the most relevant values from each module — such as the Storage
+  Account name, Key Vault URI, and Web App hostname — and displays them in the terminal.
+  This gives an immediate overview of all deployed resources without having to open
+  the Azure Portal.
+</p>
+
+  <!-- 4. APPROACH -->
+  <h2>4. Approach & Reasoning</h2>
+
+  <h3>Modular structure</h3>
+  <p>
+    The infrastructure is split into three modules (Storage, Key Vault, App Service) rather than placing everything in a single <code>main.tf</code> file.
+    Each module is responsible for exactly one concern — it receives input variables, creates its resources, and exposes outputs.
+    The root <code>main.tf</code> acts as the orchestrator: it passes values into each module and connects their outputs where needed.
+  </p>
+  <p>
+    This separation has a practical benefit for this project: in Part II, nothing in the existing code needs to be modified.
+    New resources, pipeline configuration, and application settings are simply added on top.
+    Had everything been written in one file, adding Part II would require editing existing resources — which risks unintended changes or data loss.
+  </p>
+
+  <h3>Key Vault for sensitive data</h3>
+  <p>
+    The Storage Account access key is a sensitive credential — anyone who holds it has full read and write access to the storage.
+    Storing it directly in application code or committing it to Git would expose it to anyone with access to the repository.
+  </p>
+  <p>
+    Instead, Terraform reads the access key from the Storage Account after creation and stores it automatically as a secret in Azure Key Vault.
+    The application in Part II will retrieve this secret at runtime — meaning the actual credential never appears in code or configuration files.
+    Access to the Key Vault is controlled via RBAC role assignments: the developer has the Key Vault Administrator role during deployment, and the App Service is granted the Key Vault Secrets User role (added in Part II).
+  </p>
+
+  <h3>Managed Identity instead of passwords</h3>
+  <p>
+    A common approach for giving an application access to Azure resources is to create a service principal with a client secret (essentially a username and password).
+    The problem with this approach is that the secret needs to be stored somewhere — in environment variables, configuration files, or a pipeline — which creates another credential that can be accidentally exposed.
+  </p>
+  <p>
+    By assigning the App Service a System-Assigned Managed Identity, Azure manages the authentication automatically.
+    The application proves its identity to the Key Vault through Azure's internal infrastructure — no password is ever created, stored, or rotated manually.
+    This removes an entire category of credential management from the project.
+  </p>
+
+  <h3>Full infrastructure defined in Part I</h3>
+  <p>
+    The App Service, Key Vault, and Storage Account are all provisioned in Part I, even though the application code is not written until Part II.
+    These resources form the foundation the web application needs to run securely in the cloud.
+  </p>
+  <p>
+    Provisioning everything upfront also avoids a practical problem with Terraform: if a resource is created, used to store data, and then needs to be replaced in a later apply, Terraform must destroy the existing resource first.
+    This would delete any data already stored in it. By defining the full infrastructure from the beginning, Part II can simply extend what is already there without triggering any destructive changes.
+  </p>
+
+  <h3>Upload authentication</h3>
+  <p>
+    The Storage Account currently permits GET, POST and PUT requests from any origin via CORS.
+    This is intentional at the infrastructure level — the Storage Account itself does not need to know who is allowed to upload files, because uploads do not go directly from the browser to Azure Storage.
+    Instead, the request flows through the App Service, which acts as an intermediary:
+  </p>
+  <pre>Browser → App Service → Storage Account</pre>
+  <p>
+    The App Service is the only component that communicates directly with the Storage Account.
+    Authentication — deciding whether a specific user is allowed to upload — is therefore handled in the application code in Part II, not by Terraform.
+    Terraform governs access at the Azure infrastructure level; the application governs access at the user level.
+  </p>
+
+  <!-- 5. KNOWN LIMITATIONS -->
+  <h2>5. Known Limitations</h2>
+
+  <h3>Cost</h3>
+  <p>
+    The App Service Plan (B1) costs approximately €13/month. If <code>terraform destroy</code> is not run after the project is complete,
+    the resources continue to run and incur charges. This is especially relevant for student subscriptions with a fixed budget limit.
+  </p>
+
+  <h3>No environment separation</h3>
+  <p>
+    The infrastructure currently only has a single environment (<code>dev</code>).
+    In a production context, separate environments (e.g. staging, prod) would be used so that changes can be tested before affecting live data.
+    For this project scope, a single environment is sufficient.
+  </p>
+
+  <h3>Local Terraform state <em>(resolved in Part II)</em></h3>
+  <p>
+    The Terraform state file (<code>terraform.tfstate</code>) was stored locally on the developer's machine in Part I.
+    This meant only the person who ran <code>terraform apply</code> could manage the infrastructure — and if the file was lost, Terraform would lose track of all created resources.
+    Part II resolves this with a <code>bootstrap/</code> configuration that creates a dedicated Storage Account purely for the state, solving the chicken-and-egg problem (the state-holding Storage Account cannot itself be tracked in the state it holds).
+    The main configuration's <code>backend.tf</code> then points at that Storage Account, so the pipeline and any contributor share one consistent state.
+  </p>
+
+  <h3>Public blob container</h3>
+  <p>
+    The images container is set to public blob access, meaning anyone who knows the URL of a file can access it directly.
+    For sensitive data this would be a problem. For this project — which stores images intended to be displayed on a public web page — public read access is intentional.
+  </p>
+
+  <h3>No monitoring</h3>
+  <p>
+    There are no alerts, diagnostics, or logging resources configured.
+    If the application crashes or unexpected usage occurs (e.g. a large number of uploads), there is no automated notification.
+    In a production setup, Azure Monitor and Application Insights would be added to the infrastructure.
+  </p>
+
+  <!-- 6. OUTLOOK PART II -->
+  <h2>6. Part II – What Was Added</h2>
+  <p>Part II extends this infrastructure with application code and a deployment pipeline. The following was added:</p>
+  <table>
+    <tr><th>Component</th><th>Description</th></tr>
+    <tr><td>Web Page 1</td><td>Lists all files in the Storage Account with a download link for each</td></tr>
+    <tr><td>Web Page 2</td><td>Upload form to add images to the Storage Account</td></tr>
+    <tr><td>Pipeline (YAML)</td><td>Azure DevOps pipeline that plans/applies Terraform and builds/deploys the application on every push to <code>main</code></td></tr>
+    <tr><td>RBAC for App Service</td><td>Storage Blob Data Contributor + Key Vault Secrets User roles granted to the App Service's Managed Identity</td></tr>
+    <tr><td>App Settings</td><td><code>AZURE_STORAGE_ACCOUNT_NAME</code>, <code>AZURE_STORAGE_CONTAINER_NAME</code>, and <code>KEY_VAULT_URI</code> added to the Web App configuration</td></tr>
+    <tr><td>Remote state</td><td><code>bootstrap/</code> module creates a dedicated Storage Account so Terraform state is no longer local-only</td></tr>
+  </table>
+  <p>
+    The infrastructure defined in Part I required no changes — Part II only added to it (RBAC role assignments and apps settings were added at the root/module boundary rather than rewriting existing resources).
+    See <code>documentation-part2.html</code> for the full Part II write-up (approach, architecture, identity context).
+  </p>
+
+  <footer>
+    Cloud & DevOps Engineering &nbsp;·&nbsp; Aalen University &nbsp;·&nbsp; Part I &nbsp;·&nbsp; Terraform on Azure
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud & DevOps Project – Part II Documentation</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      max-width: 860px;
+      margin: 60px auto;
+      padding: 0 40px;
+      color: #222;
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 48px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    h3 { font-size: 16px; margin-top: 28px; margin-bottom: 6px; }
+
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 40px; }
+
+    p { margin: 12px 0; }
+
+    pre {
+      background: #f4f4f4;
+      border-left: 3px solid #999;
+      padding: 14px 18px;
+      font-family: monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+
+    code {
+      font-family: monospace;
+      background: #f4f4f4;
+      padding: 1px 5px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+
+    th {
+      text-align: left;
+      border-bottom: 2px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    td {
+      border-bottom: 1px solid #eee;
+      padding: 8px 12px;
+      vertical-align: top;
+    }
+
+    .note {
+      background: #fffbea;
+      border-left: 3px solid #e6b800;
+      padding: 10px 16px;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    footer {
+      margin-top: 80px;
+      border-top: 1px solid #ccc;
+      padding-top: 16px;
+      font-size: 13px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cloud & DevOps Engineering – Part II</h1>
+  <p class="subtitle">Aalen University &nbsp;·&nbsp; Application + CI/CD Pipeline on Azure &nbsp;·&nbsp; Hüseyin Simsek</p>
+
+  <!-- 1. WHAT IS THIS -->
+  <h2>1. What is this?</h2>
+  <p>
+    Part II turns the infrastructure from Part I into a working application: a small Flask web app
+    that stores and displays images in the Storage Account, plus a CI/CD pipeline that deploys both
+    the infrastructure and the application automatically.
+  </p>
+  <p>The following is added on top of Part I:</p>
+  <table>
+    <tr><th>Component</th><th>Location</th><th>Purpose</th></tr>
+    <tr><td>Flask application</td><td><code>application/</code></td><td>Web Page 1 (list/download blobs) and Web Page 2 (upload form)</td></tr>
+    <tr><td>Remote state bootstrap</td><td><code>bootstrap/</code></td><td>One-time setup of a Storage Account to hold the Terraform state</td></tr>
+    <tr><td>RBAC role assignments</td><td><code>main.tf</code></td><td>Grants the App Service's Managed Identity access to Storage and Key Vault</td></tr>
+    <tr><td>Pipeline</td><td><code>pipelines/azure-pipelines.yml</code></td><td>Plans/applies Terraform, then builds and deploys the application</td></tr>
+    <tr><td>Deployment script</td><td><code>scripts/deploy.ps1</code></td><td>Manual/local equivalent of the pipeline's deploy step</td></tr>
+    <tr><td>Setup guide</td><td><code>documentation/AZURE_DEVOPS_SETUP.md</code></td><td>One-time manual steps: Service Connection, role assignment, pipeline variables</td></tr>
+  </table>
+
+  <!-- 2. APPLICATION -->
+  <h2>2. The Application</h2>
+  <p>
+    The application is a small Flask app (<code>application/app.py</code>) with two routes, matching
+    the two required web pages:
+  </p>
+  <p>
+    <strong>Web Page 1</strong> (<code>/</code>) lists every blob currently in the <code>images</code>
+    container — name, size, last-modified date — with a direct download link for each, and a link to
+    Web Page 2.
+  </p>
+  <p>
+    <strong>Web Page 2</strong> (<code>/upload</code>) is a simple HTML form that lets a user choose
+    a file and upload it. Filenames are sanitized (<code>secure_filename</code>) and prefixed with a
+    UTC timestamp so two uploads with the same original filename never overwrite each other.
+  </p>
+  <p>
+    Both routes talk to Azure Blob Storage through the <code>azure-storage-blob</code> SDK, authenticated
+    via <code>DefaultAzureCredential</code> — never a connection string or access key. Locally, that
+    credential chain falls back to the developer's <code>az login</code> session; on App Service, it
+    automatically picks up the Web App's System-Assigned Managed Identity.
+  </p>
+
+  <!-- 3. IDENTITY -->
+  <h2>3. Authentication & Identity Context</h2>
+  <p>
+    Part I already introduced a Managed Identity for the App Service, in anticipation of Part II.
+    Part II completes the picture by switching Key Vault from (legacy) Access Policies to
+    <strong>RBAC role assignments</strong>, and by granting the App Service's identity access to both
+    Storage and Key Vault the same way:
+  </p>
+  <table>
+    <tr><th>Identity</th><th>Type</th><th>Role granted</th><th>Where</th></tr>
+    <tr><td>Developer (<code>az login</code>)</td><td>Azure CLI user (Microsoft Entra)</td><td>Key Vault Administrator</td><td><code>modules/keyvault</code></td></tr>
+    <tr><td>App Service</td><td>System-Assigned Managed Identity</td><td>Storage Blob Data Contributor</td><td><code>main.tf</code> (root, RBAC)</td></tr>
+    <tr><td>App Service</td><td>System-Assigned Managed Identity</td><td>Key Vault Secrets User</td><td><code>main.tf</code> (root, RBAC)</td></tr>
+    <tr><td>Azure DevOps pipeline</td><td>Service Principal, Workload Identity Federation (OIDC)</td><td>Contributor (subscription)</td><td>Azure DevOps Service Connection (manual, one-time)</td></tr>
+  </table>
+  <p>
+    The two App Service role assignments are defined in the <em>root</em> module rather than inside
+    <code>modules/storage</code> or <code>modules/keyvault</code>. The reason is a subtle Terraform
+    pitfall: the Web App's Managed Identity <code>principal_id</code> is unknown until the Web App is
+    actually created (<code>known after apply</code>). A <code>count</code> expression that branches on
+    whether that value is empty cannot be evaluated during <code>terraform plan</code>, which causes
+    Terraform's <em>"Invalid count argument"</em> error on the very first apply. Defining the role
+    assignments unconditionally at the root - with no <code>count</code> - avoids the problem entirely;
+    Terraform simply defers them until the identity exists.
+  </p>
+  <p>
+    The pipeline itself authenticates without any stored secret. Azure DevOps' "App registration
+    (automatic)" Service Connection type creates a Service Principal and a federated credential trust
+    in one step - the pipeline exchanges a short-lived OIDC token for an Azure access token at run
+    time, so there is no client secret to leak, expire, or rotate. This is the modern replacement for
+    a Service Principal with a stored password, and matches the "use of SPN" pattern from the Part I
+    feedback - just without the secret.
+  </p>
+
+  <!-- 4. PIPELINE -->
+  <h2>4. CI/CD Pipeline</h2>
+  <p>The Azure DevOps pipeline (<code>pipelines/azure-pipelines.yml</code>) has three stages:</p>
+  <pre>1. TerraformPlan   – init, validate, plan; publishes the plan as a pipeline artifact
+2. TerraformApply  – downloads the plan, applies it (main branch only, "production" environment)
+3. DeployApp       – packages application/ into a zip, deploys it to the App Service</pre>
+  <p>
+    Splitting plan and apply into separate stages means the plan can be reviewed (and, if an
+    "environment" approval check is configured in Azure DevOps, explicitly approved) before anything
+    is actually changed in Azure - the same separation of concerns <code>terraform plan</code> vs.
+    <code>terraform apply</code> already enforces locally.
+  </p>
+  <p>
+    The deploy stage uses Azure App Service's Oryx build (<code>SCM_DO_BUILD_DURING_DEPLOYMENT=true</code>,
+    set both by Terraform and by <code>application/.deployment</code>), so the zip only needs to contain
+    source files - dependencies from <code>requirements.txt</code> are installed on the server during
+    deployment, not bundled into the artifact.
+  </p>
+
+  <!-- 5. PRODUCTION TIMEOUT FIX -->
+  <h2>5. Production Timeout Fix</h2>
+  <p>
+    During testing, the application occasionally returned a 502/504 on its very first request after a
+    cold start (e.g. after a deployment, or after the App Service scaled back up from idle). The root
+    cause: Gunicorn's default worker timeout is 30 seconds, and on a cold start the worker has to do
+    more than just start Flask - it also resolves <code>DefaultAzureCredential</code>, which on App
+    Service means a round-trip to the Instance Metadata Service (IMDS) to fetch a Managed Identity
+    token. Under load or during a cold start, that round-trip occasionally took longer than 30 seconds,
+    and Gunicorn killed the worker mid-request.
+  </p>
+  <p>
+    The fix is in the App Service's startup command (<code>modules/appservice/main.tf</code>):
+  </p>
+  <pre>gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 --access-logfile '-' --error-logfile '-' app:app</pre>
+  <p>
+    <code>--timeout 600</code> gives workers ten minutes before being recycled, comfortably covering
+    the credential handshake and any slow Storage API calls. <code>--workers 2</code> fits the B1
+    plan's single vCPU without the two workers starving each other of CPU. The log file flags send
+    Gunicorn's own logs to stdout/stderr so they appear in Azure's Log Stream instead of disappearing.
+  </p>
+
+  <!-- 6. KNOWN LIMITATIONS -->
+  <h2>6. Known Limitations (Part II)</h2>
+
+  <h3>No authentication on uploads</h3>
+  <p>
+    Anyone who can reach <code>/upload</code> can upload a file - there is no login, rate limiting, or
+    file-content validation beyond extension checking. This is acceptable for a university exercise,
+    but would need addressing (e.g. Azure AD authentication on the App Service, antivirus scanning of
+    uploads) before handling untrusted public traffic in a real deployment.
+  </p>
+
+  <h3>Manual Service Connection setup</h3>
+  <p>
+    Creating the Azure DevOps Service Connection with Workload Identity Federation cannot be done from
+    inside this Terraform configuration without introducing a different secret (a Personal Access
+    Token for the <code>azuredevops</code> Terraform provider). It is therefore a documented, one-time
+    manual step - see <code>documentation/AZURE_DEVOPS_SETUP.md</code> - rather than something
+    <code>terraform apply</code> handles end-to-end.
+  </p>
+
+  <h3>Single environment, single region</h3>
+  <p>
+    As in Part I, only a <code>dev</code> environment in Sweden Central exists. Promoting a change
+    through e.g. dev → staging → prod, or adding region failover, is out of scope for this project.
+  </p>
+
+  <footer>
+    Cloud & DevOps Engineering &nbsp;·&nbsp; Aalen University &nbsp;·&nbsp; Part II &nbsp;·&nbsp; Application + CI/CD on Azure
+  </footer>
+
+</body>
+</html>

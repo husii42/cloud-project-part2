@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Files – Cloud Storage App{% endblock %}
+{% block content %}
+  <div class="card">
+    <h2>Files in storage</h2>
+    <p class="subtitle">Container: <code>{{ container_name }}</code></p>
+
+    {% if error %}
+      <div class="flash error">{{ error }}</div>
+    {% elif blobs|length == 0 %}
+      <div class="empty-state">No files uploaded yet. <a href="{{ url_for('upload') }}">Upload one →</a></div>
+    {% else %}
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Last modified</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for blob in blobs %}
+            <tr>
+              <td>{{ blob.name }}</td>
+              <td>{{ blob.size_kb }} KB</td>
+              <td>{{ blob.last_modified }}</td>
+              <td><a class="download" href="{{ blob.url }}" target="_blank" rel="noopener">Download ↓</a></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    <div style="margin-top: 24px;">
+      <a class="btn" href="{{ url_for('upload') }}">Upload a new file</a>
+    </div>
+  </div>
+{% endblock %}

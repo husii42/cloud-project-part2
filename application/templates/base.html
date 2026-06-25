@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Cloud Storage App{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --border: #2a2e38;
+      --text: #e8e9ed;
+      --text-dim: #9aa0ac;
+      --accent: #4f8cff;
+      --accent-dim: #2c4a85;
+      --success: #3ecf8e;
+      --error: #ef5a5a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    nav a {
+      color: var(--text-dim);
+      text-decoration: none;
+      margin-left: 20px;
+      font-size: 14px;
+      transition: color 0.15s;
+    }
+    nav a:hover, nav a.active { color: var(--accent); }
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+    }
+    h2 { margin-top: 0; font-size: 20px; }
+    p.subtitle { color: var(--text-dim); font-size: 14px; margin-top: -8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    tr:last-child td { border-bottom: none; }
+    a.download {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a.download:hover { text-decoration: underline; }
+    .empty-state { color: var(--text-dim); padding: 24px 0; text-align: center; }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover { background: #3d78e8; }
+    .flash {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .flash.success { background: rgba(62, 207, 142, 0.12); color: var(--success); border: 1px solid rgba(62, 207, 142, 0.3); }
+    .flash.error { background: rgba(239, 90, 90, 0.12); color: var(--error); border: 1px solid rgba(239, 90, 90, 0.3); }
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      margin: 16px 0;
+    }
+    .top-link { margin-bottom: 24px; display: inline-block; color: var(--text-dim); font-size: 14px; text-decoration: none; }
+    .top-link:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📦 Cloud Storage App</h1>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.path == '/' }}">Files</a>
+      <a href="{{ url_for('upload') }}" class="{{ 'active' if request.path == '/upload' }}">Upload</a>
+    </nav>
+  </header>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

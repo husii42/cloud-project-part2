@@ -1,0 +1,184 @@
+# ─────────────────────────────────────────────────────────
+# Cloud & DevOps Engineering – Part II
+# Azure DevOps Pipeline
+# ─────────────────────────────────────────────────────────
+# Three jobs:
+#   1. TerraformPlan  – validate + plan the infrastructure, publish the plan as an artifact
+#   2. TerraformApply – apply the plan (only on the main branch)
+#   3. DeployApp      – package and deploy the Flask app to the App Service
+#
+# Authentication to Azure uses the Service Connection named below
+# ($(serviceConnection)), which is set up once in Azure DevOps using
+# "Workload Identity Federation" (App registration (automatic)). This means
+# no client secret is stored anywhere - Azure DevOps exchanges a short-lived
+# OIDC token for an Azure access token at run time. See
+# documentation/AZURE_DEVOPS_SETUP.md for the one-time manual setup steps.
+# ─────────────────────────────────────────────────────────
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  serviceConnection: "cloud-project-connection" # name of the Service Connection created in Azure DevOps (Workload Identity Federation)
+  terraformVersion: "1.9.5"
+  tfStateResourceGroup: "$(TF_STATE_RESOURCE_GROUP)" # set as a pipeline variable, from bootstrap output
+  tfStateStorageAccount: "$(TF_STATE_STORAGE_ACCOUNT)" # set as a pipeline variable, from bootstrap output
+  tfStateContainer: "tfstate"
+  tfStateKey: "cloud-project.tfstate"
+  appName: "$(APP_SERVICE_NAME)" # set as a pipeline variable, e.g. app-cloudproject-dev
+  resourceGroupName: "$(RESOURCE_GROUP_NAME)" # set as a pipeline variable, e.g. rg-cloudproject-dev
+
+stages:
+  # ───────────────────────────────────────────────────────
+  - stage: TerraformPlan
+    displayName: "Terraform – Validate & Plan"
+    jobs:
+      - job: TerraformPlan
+        displayName: "terraform plan"
+        steps:
+          - task: TerraformInstaller@1
+            displayName: "Install Terraform"
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: AzureCLI@2
+            displayName: "terraform init / validate / plan"
+            inputs:
+              azureSubscription: "$(serviceConnection)"
+              scriptType: "bash"
+              scriptLocation: "inlineScript"
+              addSpnToEnvironment: true
+              inlineScript: |
+                set -euo pipefail
+
+                # Terraform's azurerm provider and azurerm backend pick these up automatically
+                export ARM_CLIENT_ID="$servicePrincipalId"
+                export ARM_TENANT_ID="$tenantId"
+                export ARM_OIDC_TOKEN="$idToken"
+                export ARM_USE_OIDC=true
+                export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+
+                terraform init \
+                  -backend-config="resource_group_name=$(tfStateResourceGroup)" \
+                  -backend-config="storage_account_name=$(tfStateStorageAccount)" \
+                  -backend-config="container_name=$(tfStateContainer)" \
+                  -backend-config="key=$(tfStateKey)"
+
+                terraform validate
+                terraform plan -out=tfplan -input=false
+
+          - publish: tfplan
+            artifact: tfplan
+            displayName: "Publish plan artifact"
+
+  # ───────────────────────────────────────────────────────
+  - stage: TerraformApply
+    displayName: "Terraform – Apply"
+    dependsOn: TerraformPlan
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: TerraformApply
+        displayName: "terraform apply"
+        environment: "production" # gives the option to add manual approval checks in Azure DevOps
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: TerraformInstaller@1
+                  displayName: "Install Terraform"
+                  inputs:
+                    terraformVersion: $(terraformVersion)
+
+                - download: current
+                  artifact: tfplan
+                  displayName: "Download plan artifact"
+
+                - task: AzureCLI@2
+                  displayName: "terraform init / apply"
+                  inputs:
+                    azureSubscription: "$(serviceConnection)"
+                    scriptType: "bash"
+                    scriptLocation: "inlineScript"
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      set -euo pipefail
+
+                      export ARM_CLIENT_ID="$servicePrincipalId"
+                      export ARM_TENANT_ID="$tenantId"
+                      export ARM_OIDC_TOKEN="$idToken"
+                      export ARM_USE_OIDC=true
+                      export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
+
+                      terraform init \
+                        -backend-config="resource_group_name=$(tfStateResourceGroup)" \
+                        -backend-config="storage_account_name=$(tfStateStorageAccount)" \
+                        -backend-config="container_name=$(tfStateContainer)" \
+                        -backend-config="key=$(tfStateKey)"
+
+                      terraform apply -input=false -auto-approve "$(Pipeline.Workspace)/tfplan/tfplan"
+
+  # ───────────────────────────────────────────────────────
+  - stage: DeployApp
+    displayName: "Build & Deploy Application"
+    dependsOn: TerraformApply
+    condition: succeeded()
+    jobs:
+      - job: BuildApp
+        displayName: "Package application"
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.11"
+            displayName: "Use Python 3.11"
+
+          - script: |
+              set -euo pipefail
+              cd application
+              python -m pip install --upgrade pip
+              pip install -r requirements.txt --target=.python_packages/lib/site-packages
+            displayName: "Install dependencies (for smoke-test only - App Service runs its own Oryx build via SCM_DO_BUILD_DURING_DEPLOYMENT)"
+
+          - script: |
+              set -euo pipefail
+              cd application
+              python -c "import ast; ast.parse(open('app.py').read())"
+            displayName: "Smoke-test: app.py compiles"
+
+          - task: ArchiveFiles@2
+            displayName: "Zip application"
+            inputs:
+              rootFolderOrFile: "application"
+              includeRootFolder: false
+              archiveType: "zip"
+              archiveFile: "$(Build.ArtifactStagingDirectory)/app.zip"
+
+          - publish: "$(Build.ArtifactStagingDirectory)/app.zip"
+            artifact: app
+            displayName: "Publish app artifact"
+
+      - deployment: DeployApp
+        displayName: "Deploy to App Service"
+        dependsOn: BuildApp
+        environment: "production"
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: app
+                  displayName: "Download app artifact"
+
+                - task: AzureWebApp@1
+                  displayName: "Deploy Flask app to App Service"
+                  inputs:
+                    azureSubscription: "$(serviceConnection)"
+                    appType: "webAppLinux"
+                    appName: "$(appName)"
+                    resourceGroupName: "$(resourceGroupName)"
+                    package: "$(Pipeline.Workspace)/app/app.zip"
+                    runtimeStack: "PYTHON|3.11"
