@@ -1,5 +1,5 @@
 # Enter your variables here. Please note that project_name must be globally unique and contain only lowercase letters and numbers
 
-project_name = "husiweb42"
+project_name = "husi42web"
 environment  = "dev"
 location     = "swedencentral"
