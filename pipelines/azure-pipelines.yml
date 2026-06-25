@@ -85,11 +85,12 @@ stages:
     jobs:
       - deployment: TerraformApply
         displayName: "terraform apply"
-        environment: "production" # gives the option to add manual approval checks in Azure DevOps
+        environment: "production"
         strategy:
           runOnce:
             deploy:
               steps:
+                - checkout: self
                 - task: TerraformInstaller@1
                   displayName: "Install Terraform"
                   inputs:
