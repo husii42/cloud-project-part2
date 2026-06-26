@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Architecture Rationale - Infrastructure and Pipeline</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">body {
+font-family: Georgia, serif;
+max-width: 900px;
+margin: 60px auto;
+padding: 0 40px;
+color: #222;
+line-height: 1.8;
+font-size: 16px;
+}
+h1 { font-size: 28px; margin-bottom: 4px; border-bottom: 2px solid #333; padding-bottom: 12px; }
+h2 { font-size: 20px; margin-top: 48px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+h3 { font-size: 16px; margin-top: 28px; margin-bottom: 6px; }
+h4 { font-size: 15px; margin-top: 20px; margin-bottom: 4px; font-style: italic; }
+p { margin: 12px 0; }
+ul, ol { margin: 12px 0; padding-left: 28px; }
+li { margin: 6px 0; }
+pre {
+background: #f4f4f4;
+border-left: 3px solid #999;
+padding: 14px 18px;
+font-family: monospace;
+font-size: 14px;
+overflow-x: auto;
+line-height: 1.6;
+white-space: pre-wrap;
+word-wrap: break-word;
+}
+code {
+font-family: monospace;
+background: #f4f4f4;
+padding: 1px 5px;
+font-size: 14px;
+border-radius: 3px;
+}
+pre code { background: none; padding: 0; }
+table {
+width: 100%;
+border-collapse: collapse;
+margin: 16px 0;
+font-size: 15px;
+}
+th {
+text-align: left;
+border-bottom: 2px solid #ccc;
+padding: 8px 12px;
+background: #fafafa;
+}
+td {
+border-bottom: 1px solid #eee;
+padding: 8px 12px;
+vertical-align: top;
+}
+blockquote {
+border-left: 3px solid #ccc;
+margin: 16px 0;
+padding: 4px 16px;
+color: #555;
+}
+hr {
+border: none;
+border-top: 1px solid #ccc;
+margin: 40px 0;
+}
+strong { color: #111; }
+a { color: #2c5fa8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.note {
+background: #fffbea;
+border-left: 3px solid #e6b800;
+padding: 10px 16px;
+font-size: 14px;
+margin: 16px 0;
+}
+footer {
+margin-top: 80px;
+border-top: 1px solid #ccc;
+padding-top: 16px;
+font-size: 13px;
+color: #999;
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Architecture Rationale - Infrastructure and
+Pipeline</h1>
+</header>
+<h1 id="architecture-rationale-infrastructure-pipeline">Architecture
+Rationale — Infrastructure &amp; Pipeline</h1>
+<p>This document explains <em>why</em> the infrastructure and CI/CD
+pipeline are designed the way they are — the reasoning behind each
+decision, not just the mechanics. Intended to support the project
+write-up / defense.</p>
+<hr />
+<h2 id="module-structure-one-module-per-resource-type">1. Module
+structure: one module per resource type</h2>
+<pre><code>modules/
+├── storage/      → Storage Account + Container
+├── keyvault/      → Key Vault + secret + role assignments
+└── appservice/    → App Service Plan + Linux Web App + Managed Identity</code></pre>
+<p><strong>Why this shape:</strong> Each module owns exactly one Azure
+resource type and its directly-dependent sub-resources
+(e.g. <code>storage</code> owns the container, not just the account).
+This mirrors how the resources are actually managed in Azure — you’d
+reason about “the storage layer” or “the secrets layer” as a unit — and
+keeps each module’s <code>variables.tf</code>/<code>outputs.tf</code>
+small enough to review at a glance. The alternative (one flat
+<code>main.tf</code> for everything) becomes unreadable past a handful
+of resources; the alternative in the other direction (one module per
+individual resource, including sub-resources) creates excessive
+indirection for resources that are never meaningfully used independently
+of their parent.</p>
+<p><strong>Why role assignments for the App Service’s identity live in
+the <em>root</em> module, not inside
+<code>storage</code>/<code>keyvault</code>:</strong> This was a
+deliberate correction made after testing surfaced a real Terraform
+limitation. The App Service’s Managed Identity <code>principal_id</code>
+is <code>(known after apply)</code> until the Web App actually exists. A
+<code>count</code> expression that branches on whether that value is set
+(<code>count = var.principal_id != &quot;&quot; ? 1 : 0</code>) cannot be
+evaluated during <code>terraform plan</code>, because the value the
+condition depends on isn’t known yet — this is Terraform’s documented
+behavior, not a bug, but it produces a hard failure (“Invalid count
+argument”) on the very first <code>apply</code>. Placing the two role
+assignments in the root module <strong>without</strong> a
+<code>count</code> sidesteps the problem entirely: Terraform simply
+defers creating them until the identity is known, with no conditional
+logic needed. This is a clean illustration of how Terraform’s dependency
+graph, not just the README, should drive where a resource is
+declared.</p>
+<hr />
+<h2 id="rbac-instead-of-key-vault-access-policies">2. RBAC instead of
+Key Vault Access Policies</h2>
+<p><strong>Why:</strong> Access Policies are Key Vault’s legacy,
+vault-specific authorization model — permissions are stored on the vault
+object itself and don’t compose with the rest of Azure’s permission
+model. RBAC role assignments are evaluated through the same
+<code>Microsoft.Authorization</code> system used everywhere else in
+Azure (Storage, subscriptions, resource groups), which means:</p>
+<ul>
+<li>One mental model for “who can do what” across the entire
+infrastructure, not a special case for Key Vault.</li>
+<li>Permissions are queryable and auditable the same way for every
+resource (<code>az role assignment list --scope ...</code>), instead of
+needing a vault-specific API.</li>
+<li>It matches how the Storage Account’s access for the App Service’s
+Managed Identity is already granted
+(<code>Storage Blob Data Contributor</code>), so the project doesn’t mix
+two different authorization paradigms for conceptually similar “can this
+identity touch this resource’s data” questions.</li>
+</ul>
+<p><strong>Trade-off worth noting:</strong> RBAC role propagation can
+take a few minutes, versus Access Policies which apply near-instantly.
+For a course project this is a minor inconvenience; in this project it
+was also the direct cause of several <code>403 Forbidden</code> errors
+during initial pipeline setup — not because RBAC was the wrong choice,
+but because role assignments must be created (and given time to
+propagate) <em>before</em> the identity that needs them is first used,
+which is easy to overlook when standing up a pipeline for the first
+time.</p>
+<hr />
+<h2 id="why-the-application-never-holds-a-credential">3. Why the
+application never holds a credential</h2>
+<p>The Storage Account’s connection string is still written to Key Vault
+as a secret (<code>storage-connection-string</code>) — this is kept from
+Part I, mainly to demonstrate the original “store sensitive data in Key
+Vault” requirement and for manual debugging. The <strong>running Flask
+application does not read it.</strong> Instead, <code>app.py</code> uses
+<code>DefaultAzureCredential</code>, which:</p>
+<ul>
+<li>Resolves to the <strong>App Service’s System-Assigned Managed
+Identity</strong> when running in Azure — Azure handles credential
+issuance and rotation entirely outside the application; there is no
+secret to leak, expire, or accidentally commit to Git.</li>
+<li>Falls back to the developer’s <code>az login</code> session when
+running locally — the same code path works in both environments without
+an <code>if   environment == &quot;production&quot;</code> branch.</li>
+</ul>
+<p><strong>Why this matters beyond “best practice”:</strong> a
+connection string in an App Setting is visible to anyone with read
+access to the App Service configuration (which, on a student
+subscription with a single <code>Contributor</code>-level account, might
+not seem like a meaningful boundary — but on a real team it is exactly
+the kind of credential that ends up pasted into a Slack message or a
+support ticket). Removing the credential from the application’s reach
+entirely removes that failure mode rather than mitigating it.</p>
+<hr />
+<h2 id="why-the-pipeline-authenticates-via-workload-identity-federation-not-a-stored-secret">4.
+Why the pipeline authenticates via Workload Identity Federation, not a
+stored secret</h2>
+<p>Classic Service Principal authentication requires a client secret (or
+certificate) stored as a pipeline variable/secret — something that
+exists, needs rotation, and is a credential an attacker could exfiltrate
+from pipeline logs, variable groups, or a compromised agent. Workload
+Identity Federation (OIDC) instead has Azure DevOps present a
+short-lived, signed token to Microsoft Entra ID at <em>run time</em>,
+which Entra ID exchanges for an Azure access token after verifying the
+trust relationship — <strong>no long-lived secret exists
+anywhere</strong>, in Azure DevOps or in Azure.</p>
+<p>This also explains why <strong>the Service Connection is set up
+manually through the Azure DevOps UI</strong> (“App registration
+(automatic)”) rather than via Terraform: creating the federated
+credential trust through <code>azuredevops</code>/<code>azuread</code>
+Terraform providers would require a Personal Access Token to
+authenticate Terraform <em>to Azure DevOps itself</em> — reintroducing
+exactly the kind of long-lived secret this design is trying to
+eliminate. The UI-driven, one-time manual step is the smaller attack
+surface, even though it’s the less “everything is code” option.</p>
+<hr />
+<h2 id="why-the-pipeline-needs-more-than-contributor">5. Why the
+pipeline needs more than <code>Contributor</code></h2>
+<p>A natural first instinct is “the pipeline manages infrastructure, so
+give it <code>Contributor</code>.” This undershoots what the Terraform
+configuration actually does:</p>
+<ul>
+<li><strong><code>Contributor</code></strong> covers
+creating/modifying/deleting Azure <em>resources</em> (storage accounts,
+web apps, vaults) — the management plane.</li>
+<li>It does <strong>not</strong> cover creating or deleting <strong>RBAC
+role assignments</strong>
+(<code>Microsoft.Authorization/roleAssignments/*</code>) — Azure
+deliberately separates “can manage resources” from “can grant access to
+resources”, since the latter is a privilege-escalation-adjacent
+capability. This needs
+<strong><code>User Access Administrator</code></strong>.</li>
+<li>It also does not cover <strong>Key Vault secret data-plane
+operations</strong> (<code>getSecret</code>, <code>setSecret</code>) —
+RBAC for Key Vault separates “manage the vault resource” from
+“read/write what’s inside it.” This needs
+<strong><code>Key Vault Secrets Officer</code></strong> scoped to the
+vault.</li>
+</ul>
+<p>This three-role split is not incidental complexity — it’s Azure’s
+RBAC model working as designed, and it directly reflects the separation
+of concerns in the Terraform configuration itself: managing resources,
+granting access to resources, and reading/writing secrets are three
+distinct operations, each gated by its own permission.</p>
+<hr />
+<h2 id="why-terraform-state-is-remote-with-a-separate-bootstrap-step">6.
+Why Terraform state is remote, with a separate bootstrap step</h2>
+<p>Local state (<code>terraform.tfstate</code> on a single developer’s
+machine) breaks the moment more than one actor needs to run
+<code>terraform apply</code> against the same infrastructure — and a
+CI/CD pipeline is, by definition, a second actor. Remote state in a
+Storage Account gives the pipeline and any local developer a single,
+shared source of truth, with locking to prevent two concurrent applies
+from corrupting each other.</p>
+<p><strong>Why bootstrap is a separate, manually-run configuration
+instead of part of the main one:</strong> Terraform’s state for the
+<em>main</em> configuration would need to live in a Storage Account that
+the main configuration itself creates — a circular dependency (the
+resource doesn’t exist yet when Terraform needs somewhere to record that
+it’s creating it). Splitting this into a one-time,
+separately-initialized <code>bootstrap/</code> configuration (which uses
+its own short-lived local state, just for this one step) is the standard
+resolution: it exists specifically to solve a problem that exists
+<em>before</em> the main configuration can run at all.</p>
+<hr />
+<h2 id="why-the-pipeline-splits-plan-and-apply-into-separate-stages">7.
+Why the pipeline splits Plan and Apply into separate stages</h2>
+<pre><code>TerraformPlan → TerraformApply → DeployApp</code></pre>
+<p>Separating <code>plan</code> from <code>apply</code> (rather than
+running both inline in one job) preserves the same review opportunity
+that running them separately on the command line gives a developer: the
+plan’s output can be inspected — and, if an Azure DevOps
+<strong>Environment</strong> approval check is configured — explicitly
+approved, before anything is actually changed in Azure. Passing the plan
+as a build artifact between stages also guarantees <code>apply</code>
+acts on <em>exactly</em> the reviewed plan, not a plan freshly
+regenerated against whatever the infrastructure happens to look like by
+the time <code>apply</code> runs (which could differ if state changed in
+between, however briefly).</p>
+<p><strong>Why <code>deployment</code> jobs, not plain <code>job</code>
+blocks:</strong> <code>deployment</code> jobs let the
+<code>production</code> <strong>Environment</strong> be referenced,
+which is what enables the optional approval-gate behavior above — a
+plain <code>job</code> has no equivalent concept. The trade-off
+(deployment jobs don’t auto-checkout the repository, unlike plain jobs)
+is a real one we hit directly: it produced an “initialized in an empty
+directory” Terraform error until <code>checkout: self</code> was added
+explicitly as the first step. That’s a one-line fix once understood, and
+a small price for the approval-gate capability gained.</p>
+<hr />
+<h2 id="why-the-app-services-startup-command-sets-explicit-gunicorn-flags">8.
+Why the App Service’s startup command sets explicit Gunicorn flags</h2>
+<pre><code>gunicorn --bind=0.0.0.0:8000 --timeout 600 --workers 2 --access-logfile &#39;-&#39; --error-logfile &#39;-&#39; app:app</code></pre>
+<ul>
+<li><strong><code>--timeout 600</code></strong>: Gunicorn’s default
+30-second worker timeout is tuned for steady-state request handling, not
+cold starts. On App Service, a cold-started worker also has to complete
+the <code>DefaultAzureCredential</code> → Managed Identity token
+handshake (a round trip to Azure’s Instance Metadata Service) before it
+can serve its first request — under load or right after a deployment,
+that combination occasionally exceeded 30 seconds, causing Gunicorn to
+kill the worker mid-request. 600 seconds gives ample headroom without
+masking a genuinely broken request (which would still eventually need
+investigating, just not be falsely attributed to a timeout).</li>
+<li><strong><code>--workers 2</code></strong>: matched to the B1 App
+Service Plan’s single vCPU — enough to handle one request while another
+is in flight, without over-provisioning workers that would compete for
+the same limited CPU.</li>
+<li><strong><code>--access-logfile &#39;-&#39; --error-logfile &#39;-&#39;</code></strong>:
+sends Gunicorn’s own logs to stdout/stderr, which is what Azure’s Log
+Stream (<code>az webapp log tail</code>) actually surfaces — without
+this, Gunicorn’s logs would go nowhere visible, making any future
+production issue much harder to diagnose.</li>
+</ul>
+<hr />
+<h2 id="why-project_name-has-no-random-suffix">9. Why
+<code>project_name</code> has no random suffix</h2>
+<p>Earlier iterations of this project (and the grading feedback that
+preceded Part II) used a <code>random_string</code> suffix to guarantee
+globally-unique Storage Account/Key Vault names automatically. Part II
+deliberately removes this, per explicit project direction, in favor of
+the developer choosing a unique name themselves via
+<code>terraform.tfvars</code> (and the equivalent
+<code>PROJECT_NAME</code> pipeline variable).</p>
+<p><strong>Trade-off accepted knowingly:</strong> this shifts the
+uniqueness burden onto the person running the project, and — as this
+project’s own setup process demonstrated at length — makes the project
+more sensitive to a single inconsistency (local
+<code>terraform.tfvars</code> vs. the pipeline’s variable falling back
+to a different default) than a random suffix would have been. The
+mitigation isn’t a code-level safeguard but a process one: pick a name
+once, write it down, and set it identically everywhere a
+<code>project_name</code> value is read from. The
+<code>SETUP_GUIDE.md</code> documents this as the single most important
+step to get right before starting.</p>
+</body>
+</html>

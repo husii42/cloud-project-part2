@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Setup Guide - Cloud and DevOps Engineering Part II</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+  <style type="text/css">body {
+font-family: Georgia, serif;
+max-width: 900px;
+margin: 60px auto;
+padding: 0 40px;
+color: #222;
+line-height: 1.8;
+font-size: 16px;
+}
+h1 { font-size: 28px; margin-bottom: 4px; border-bottom: 2px solid #333; padding-bottom: 12px; }
+h2 { font-size: 20px; margin-top: 48px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+h3 { font-size: 16px; margin-top: 28px; margin-bottom: 6px; }
+h4 { font-size: 15px; margin-top: 20px; margin-bottom: 4px; font-style: italic; }
+p { margin: 12px 0; }
+ul, ol { margin: 12px 0; padding-left: 28px; }
+li { margin: 6px 0; }
+pre {
+background: #f4f4f4;
+border-left: 3px solid #999;
+padding: 14px 18px;
+font-family: monospace;
+font-size: 14px;
+overflow-x: auto;
+line-height: 1.6;
+white-space: pre-wrap;
+word-wrap: break-word;
+}
+code {
+font-family: monospace;
+background: #f4f4f4;
+padding: 1px 5px;
+font-size: 14px;
+border-radius: 3px;
+}
+pre code { background: none; padding: 0; }
+table {
+width: 100%;
+border-collapse: collapse;
+margin: 16px 0;
+font-size: 15px;
+}
+th {
+text-align: left;
+border-bottom: 2px solid #ccc;
+padding: 8px 12px;
+background: #fafafa;
+}
+td {
+border-bottom: 1px solid #eee;
+padding: 8px 12px;
+vertical-align: top;
+}
+blockquote {
+border-left: 3px solid #ccc;
+margin: 16px 0;
+padding: 4px 16px;
+color: #555;
+}
+hr {
+border: none;
+border-top: 1px solid #ccc;
+margin: 40px 0;
+}
+strong { color: #111; }
+a { color: #2c5fa8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.note {
+background: #fffbea;
+border-left: 3px solid #e6b800;
+padding: 10px 16px;
+font-size: 14px;
+margin: 16px 0;
+}
+footer {
+margin-top: 80px;
+border-top: 1px solid #ccc;
+padding-top: 16px;
+font-size: 13px;
+color: #999;
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Setup Guide - Cloud and DevOps Engineering Part
+II</h1>
+</header>
+<h1 id="setup-guide-cloud-devops-engineering-part-ii">Setup Guide —
+Cloud &amp; DevOps Engineering Part II</h1>
+<p>End-to-end instructions: from an empty Azure subscription to a live,
+pipeline-deployed Flask application. Written so that someone testing
+this project from scratch (e.g. for grading) can follow it without
+needing prior context from development sessions.</p>
+<hr />
+<h2 id="prerequisites">0. Prerequisites</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Tool</th>
+<th>Install</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Terraform ≥ 1.5</td>
+<td><code>winget install Hashicorp.Terraform</code></td>
+</tr>
+<tr class="even">
+<td>Azure CLI</td>
+<td><code>winget install Microsoft.AzureCLI</code></td>
+</tr>
+<tr class="odd">
+<td>Python 3.11 (only for local app testing)</td>
+<td>https://www.python.org/downloads/</td>
+</tr>
+<tr class="even">
+<td>Azure subscription</td>
+<td>Student subscription works</td>
+</tr>
+<tr class="odd">
+<td>Azure DevOps organization</td>
+<td>https://dev.azure.com</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb1"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>az login</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>az account show   <span class="co"># confirm the correct subscription is active</span></span></code></pre></div>
+<hr />
+<h2 id="choose-a-unique-project-name-and-write-it-down">1. Choose a
+unique project name — and write it down</h2>
+<p>Storage Account and Key Vault names must be <strong>globally unique
+across all of Azure</strong> and have strict length limits. Pick
+<strong>one</strong> short, lowercase, alphanumeric name and use it
+<strong>everywhere</strong> — local <code>terraform.tfvars</code>, Azure
+DevOps pipeline variables, all of it. Mixing different values between
+local and pipeline runs is the single most common source of errors in
+this project (Terraform will try to destroy and recreate everything
+under the new name, since Azure resource names cannot be renamed in
+place).</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="va">$PROJECT</span> <span class="op">=</span> <span class="st">&quot;yourname42&quot;</span>   <span class="co"># example - replace with your own, keep it short</span></span></code></pre></div>
+<p><strong>Length budget:</strong> the tightest constraint is the Key
+Vault name (<code>kv-&lt;project_name&gt;-&lt;environment&gt;</code>,
+max 24 characters). With <code>environment = &quot;dev&quot;</code> (3 chars) and
+the <code>kv--</code> separators (4 chars), that leaves <strong>at most
+17 characters</strong> for <code>project_name</code>.</p>
+<p>Use a <strong>different, separate</strong> name for the remote-state
+bootstrap (it has its own, independent uniqueness requirement):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="va">$BOOTSTRAP_PROJECT</span> <span class="op">=</span> <span class="st">&quot;yourname42state&quot;</span></span></code></pre></div>
+<hr />
+<h2 id="bootstrap-the-remote-state-backend-one-time">2. Bootstrap the
+remote state backend (one-time)</h2>
+<div class="sourceCode" id="cb4"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> bootstrap</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>terraform init</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>terraform apply <span class="op">-</span>var<span class="op">=</span><span class="st">&quot;project_name=$BOOTSTRAP_PROJECT&quot;</span></span></code></pre></div>
+<p>Confirm with <code>yes</code>. Note the outputs:</p>
+<pre><code>resource_group_name  = &quot;rg-&lt;bootstrap_project&gt;-tfstate&quot;
+storage_account_name = &quot;sttfstate&lt;bootstrap_project&gt;&quot;</code></pre>
+<p>Write these down — they are needed in step 3 and step 7.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> <span class="op">..</span></span></code></pre></div>
+<hr />
+<h2 id="configure-and-apply-the-main-infrastructure-locally">3.
+Configure and apply the main infrastructure locally</h2>
+<p>Create <code>terraform.tfvars</code> in the project root:</p>
+<pre class="hcl"><code>project_name = &quot;yourname42&quot;
+environment  = &quot;dev&quot;
+location     = &quot;swedencentral&quot;</code></pre>
+<p>Initialize with the backend from step 2:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>terraform init `</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>backend<span class="op">-</span>config<span class="op">=</span><span class="st">&quot;resource_group_name=rg-yourname42state-tfstate&quot;</span> `</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>backend<span class="op">-</span>config<span class="op">=</span><span class="st">&quot;storage_account_name=sttfstateyourname42state&quot;</span> `</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>backend<span class="op">-</span>config<span class="op">=</span><span class="st">&quot;container_name=tfstate&quot;</span> `</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">-</span>backend<span class="op">-</span>config<span class="op">=</span><span class="st">&quot;key=cloud-project.tfstate&quot;</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>terraform plan</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>terraform apply</span></code></pre></div>
+<p>Confirm with <code>yes</code>. This creates: Resource Group, Storage
+Account + <code>images</code> container, Key Vault (RBAC) + secret, App
+Service Plan, Linux Web App with a System-Assigned Managed Identity, and
+the two RBAC role assignments that give that identity access to Storage
+and Key Vault.</p>
+<p>Note the outputs — you’ll need <code>app_service_name</code> and
+<code>resource_group_name</code> later.</p>
+<hr />
+<h2 id="grant-yourself-data-plane-access-for-local-app-testing-only">4.
+Grant yourself data-plane access (for local app testing only)</h2>
+<p>Terraform’s RBAC role assignments target the <strong>App
+Service’s</strong> Managed Identity, not your own <code>az login</code>
+account. To run the Flask app locally against real Azure Storage, grant
+yourself the same role:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">$myObjectId</span> <span class="op">=</span> az ad signed<span class="op">-</span>in<span class="op">-</span>user show <span class="op">--</span>query id <span class="op">-</span>o tsv</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>az role assignment create `</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>assignee <span class="va">$myObjectId</span> `</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>role <span class="st">&quot;Storage Blob Data Contributor&quot;</span> `</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>scope <span class="st">&quot;/subscriptions/&lt;subscription-id&gt;/resourceGroups/rg-yourname42-dev/providers/Microsoft.Storage/storageAccounts/styourname42dev&quot;</span></span></code></pre></div>
+<p>Wait ~5 minutes for RBAC propagation before testing.</p>
+<hr />
+<h2 id="test-the-application-locally-optional-but-recommended">5. Test
+the application locally (optional but recommended)</h2>
+<div class="sourceCode" id="cb10"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cd</span> application</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>python <span class="op">-</span>m venv <span class="op">.</span><span class="fu">venv</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co"># If PowerShell blocks the activation script:</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a><span class="fu">Set-ExecutionPolicy</span> <span class="op">-</span>Scope <span class="kw">Process</span> <span class="op">-</span>ExecutionPolicy Bypass</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="op">.</span><span class="fu">venv</span>\Scripts\Activate<span class="op">.</span><span class="fu">ps1</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>pip install <span class="op">-</span>r requirements<span class="op">.</span><span class="fu">txt</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a><span class="va">$env</span><span class="op">:</span>AZURE_STORAGE_ACCOUNT_NAME <span class="op">=</span> <span class="st">&quot;styourname42dev&quot;</span></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="va">$env</span><span class="op">:</span>AZURE_STORAGE_CONTAINER_NAME <span class="op">=</span> <span class="st">&quot;images&quot;</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>python app<span class="op">.</span><span class="fu">py</span></span></code></pre></div>
+<p>Open <code>http://localhost:8000</code> — Page 1 should load (empty
+list), <code>/upload</code> should show the form. <code>Ctrl+C</code> to
+stop, <code>cd ..</code>.</p>
+<hr />
+<h2 id="deploy-the-app-manually-fastest-path-to-a-working-url">6. Deploy
+the app manually (fastest path to a working URL)</h2>
+<div class="sourceCode" id="cb11"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="op">.</span>\scripts\deploy<span class="op">.</span><span class="fu">ps1</span> <span class="op">-</span>ResourceGroupName <span class="st">&quot;rg-yourname42-dev&quot;</span> <span class="op">-</span>AppServiceName <span class="st">&quot;app-yourname42-dev&quot;</span></span></code></pre></div>
+<p>This already gives you a fully working application — steps 7–10 below
+are only needed to also demonstrate the CI/CD pipeline.</p>
+<hr />
+<h2 id="set-up-the-azure-devops-service-connection-one-time">7. Set up
+the Azure DevOps Service Connection (one-time)</h2>
+<ol type="1">
+<li>Azure DevOps → <strong>Project Settings → Service connections → New
+service connection</strong></li>
+<li><strong>Azure Resource Manager → App registration (automatic) →
+Workload identity federation</strong></li>
+<li>Scope level: <strong>Subscription</strong>, select your
+subscription</li>
+<li>Name: <code>cloud-project-connection</code></li>
+<li>Save</li>
+</ol>
+<p>This creates a Microsoft Entra App Registration + Service Principal
+with a federated credential trust — <strong>no client secret is ever
+generated</strong>.</p>
+<p><strong>Find the Service Principal’s Object ID:</strong> Service
+connection → <strong>Manage App registration</strong> → Overview → copy
+<strong>Object ID</strong> (not the Application/Client ID).</p>
+<hr />
+<h2 id="grant-the-pipelines-service-principal-the-roles-it-needs">8.
+Grant the pipeline’s Service Principal the roles it needs</h2>
+<p>The pipeline needs <strong>more than
+<code>Contributor</code></strong>, because Terraform also
+creates/deletes RBAC role assignments and reads/writes Key Vault secrets
+— neither of which <code>Contributor</code> covers (RBAC role management
+and Key Vault data-plane access are deliberately separated from general
+resource management in Azure).</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="va">$spObjectId</span> <span class="op">=</span> <span class="st">&quot;&lt;object-id-from-step-7&gt;&quot;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="va">$subId</span> <span class="op">=</span> az account show <span class="op">--</span>query id <span class="op">-</span>o tsv</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Manage resources</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>az role assignment create <span class="op">--</span>assignee <span class="va">$spObjectId</span> <span class="op">--</span>role <span class="st">&quot;Contributor&quot;</span> <span class="op">--</span>scope <span class="st">&quot;/subscriptions/$subId&quot;</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Create/delete RBAC role assignments (needed because Terraform manages</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a><span class="co"># the App Service&#39;s access to Storage/Key Vault)</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>az role assignment create <span class="op">--</span>assignee <span class="va">$spObjectId</span> <span class="op">--</span>role <span class="st">&quot;User Access Administrator&quot;</span> <span class="op">--</span>scope <span class="st">&quot;/subscriptions/$subId&quot;</span></span></code></pre></div>
+<p>After the Key Vault exists (post first apply), also grant data-plane
+access to read/write the secret Terraform manages there:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>az role assignment create `</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>assignee <span class="va">$spObjectId</span> `</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>role <span class="st">&quot;Key Vault Secrets Officer&quot;</span> `</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="op">--</span>scope <span class="st">&quot;/subscriptions/$subId/resourceGroups/rg-yourname42-dev/providers/Microsoft.KeyVault/vaults/kv-yourname42-dev&quot;</span></span></code></pre></div>
+<p>Wait ~5 minutes for propagation before running the pipeline.</p>
+<hr />
+<h2 id="install-the-terraform-extension-and-set-pipeline-variables">9.
+Install the Terraform extension and set pipeline variables</h2>
+<p><strong>Install the Marketplace extension</strong> (one-time, needs
+org admin rights):
+https://marketplace.visualstudio.com/items?itemName=ms-devlabs.custom-terraform-tasks
+→ “Get it free” → select your organization → “Install”</p>
+<p><strong>Set pipeline variables</strong> (Pipelines → Edit →
+Variables):</p>
+<table>
+<thead>
+<tr class="header">
+<th>Variable</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>PROJECT_NAME</code></td>
+<td><code>yourname42</code></td>
+</tr>
+<tr class="even">
+<td><code>TF_STATE_RESOURCE_GROUP</code></td>
+<td><code>rg-yourname42state-tfstate</code></td>
+</tr>
+<tr class="odd">
+<td><code>TF_STATE_STORAGE_ACCOUNT</code></td>
+<td><code>sttfstateyourname42state</code></td>
+</tr>
+<tr class="even">
+<td><code>RESOURCE_GROUP_NAME</code></td>
+<td><code>rg-yourname42-dev</code></td>
+</tr>
+<tr class="odd">
+<td><code>APP_SERVICE_NAME</code></td>
+<td><code>app-yourname42-dev</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>PROJECT_NAME</code> is critical and easy to
+miss:</strong> <code>terraform.tfvars</code> is git-ignored, so the
+pipeline never sees it. Without explicitly passing
+<code>project_name</code> via this pipeline variable, Terraform silently
+falls back to the <code>default</code> value in
+<code>variables.tf</code>, which then drifts from whatever you’re using
+locally — causing Terraform to plan a full destroy-and-recreate under
+the “other” name on every alternating local/pipeline run.</p>
+<hr />
+<h2 id="run-the-pipeline-and-verify">10. Run the pipeline and
+verify</h2>
+<p>Create the pipeline (Pipelines → New Pipeline → select your repo →
+“Existing Azure Pipelines YAML file” →
+<code>pipelines/azure-pipelines.yml</code>), then run it.</p>
+<p>Three stages run in order: 1. <strong>Terraform – Validate &amp;
+Plan</strong> 2. <strong>Terraform – Apply</strong> (only on
+<code>main</code>) 3. <strong>Build &amp; Deploy
+Application</strong></p>
+<h3 id="if-you-see-terraform-init-stuck-with-no-error">If you see
+<code>terraform init</code> “stuck” with no error</h3>
+<p>Confirm <code>-input=false</code> is present on all
+<code>terraform init</code> calls (prevents hanging on an interactive
+prompt with no TTY available).</p>
+<h3 id="if-terraformapply-fails-with-initialized-in-an-empty-directory">If
+<code>TerraformApply</code> fails with “initialized in an empty
+directory”</h3>
+<p><code>deployment</code> jobs in Azure DevOps do <strong>not</strong>
+auto-checkout the repo like plain <code>job</code> blocks do. Confirm
+<code>- checkout: self</code> is the first step in both
+<code>deployment</code> jobs.</p>
+<h3 id="if-you-see-roleassignmentsclientdelete-403">If you see
+<code>RoleAssignmentsClient#Delete: 403</code></h3>
+<p>The Service Principal lacks <code>User Access Administrator</code> —
+see step 8.</p>
+<h3 id="if-you-see-getsecret-403-forbiddenbyrbac">If you see
+<code>GetSecret: 403 ForbiddenByRbac</code></h3>
+<p>The Service Principal lacks <code>Key Vault Secrets Officer</code> on
+the Key Vault — see step 8 (must be granted after the vault exists).</p>
+<h3 id="if-deploy-to-app-service-fails-with-resource-group-could-not-be-found-404">If
+<code>Deploy to App Service</code> fails with “Resource group … could
+not be found (404)”</h3>
+<p>This is the task’s (slightly misleading) error for “I can’t see this
+resource at all” — almost always means <code>RESOURCE_GROUP_NAME</code>
+/ <code>APP_SERVICE_NAME</code> pipeline variables don’t match what
+Terraform actually created (see the <code>PROJECT_NAME</code>
+consistency requirement in step 9), <strong>not</strong> a Basic
+Auth/publishing-credentials issue, even though some Stack Overflow
+threads suggest that. Verify with:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>az <span class="fu">group</span> show <span class="op">--</span>name <span class="op">&lt;</span>RESOURCE_GROUP_NAME<span class="op">-</span>value<span class="op">&gt;</span></span></code></pre></div>
+<p>If that itself returns <code>ResourceGroupNotFound</code>, the names
+are out of sync — fix <code>PROJECT_NAME</code> and re-run Terraform
+before touching the deploy step.</p>
+<hr />
+<h2 id="verify-the-live-application">11. Verify the live
+application</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Check</th>
+<th>Expected</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>https://app-yourname42-dev.azurewebsites.net/</code></td>
+<td>“Files in storage” page loads</td>
+</tr>
+<tr class="even">
+<td><code>.../upload</code></td>
+<td>Upload form loads</td>
+</tr>
+<tr class="odd">
+<td>Upload a test file</td>
+<td>Appears back on Page 1 with a download link</td>
+</tr>
+<tr class="even">
+<td><code>.../healthz</code></td>
+<td><code>{&quot;status&quot;: &quot;ok&quot;}</code></td>
+</tr>
+<tr class="odd">
+<td>Azure Portal → Key Vault → Access control (IAM)</td>
+<td>Shows RBAC role assignments, not Access Policies</td>
+</tr>
+<tr class="even">
+<td>Azure Portal → App Service → Identity</td>
+<td>“System assigned” → On</td>
+</tr>
+</tbody>
+</table>
+<p><strong>First request after a fresh deployment can take 1–3
+minutes</strong> (cold start: Oryx build artifacts settle, Gunicorn
+workers start, the Managed Identity token handshake with IMDS
+completes). This is expected — wait and reload rather than repeatedly
+force-reloading, which starts multiple parallel cold starts. If it’s
+still not responding after ~5 minutes:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>az webapp log tail <span class="op">--</span>name app<span class="op">-</span>yourname42<span class="op">-</span>dev <span class="op">--</span>resource<span class="op">-</span>group rg<span class="op">-</span>yourname42<span class="op">-</span>dev</span></code></pre></div>
+<hr />
+<h2 id="key-lesson-for-repeat-runs">Key lesson for repeat runs</h2>
+<p><strong>Pick one <code>project_name</code>, write it down once, and
+never deviate</strong> — in <code>terraform.tfvars</code> locally, in
+the <code>PROJECT_NAME</code> pipeline variable, and in every RBAC scope
+you assign. The overwhelming majority of issues encountered in this
+project’s setup traced back to a name mismatch between local and
+pipeline runs, not a logic error in the Terraform code itself.</p>
+</body>
+</html>
