@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud and DevOps Project: Documentation</title>
+  <style>
+    body {
+      font-family: Georgia, serif;
+      max-width: 860px;
+      margin: 60px auto;
+      padding: 0 40px;
+      color: #222;
+      line-height: 1.8;
+      font-size: 16px;
+    }
+
+    h1 { font-size: 28px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 48px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+    h3 { font-size: 16px; margin-top: 28px; margin-bottom: 6px; }
+
+    .subtitle { color: #666; font-size: 14px; margin-bottom: 40px; }
+
+    p { margin: 12px 0; }
+
+    pre {
+      background: #f4f4f4;
+      border-left: 3px solid #999;
+      padding: 14px 18px;
+      font-family: monospace;
+      font-size: 14px;
+      overflow-x: auto;
+      line-height: 1.7;
+    }
+
+    code {
+      font-family: monospace;
+      background: #f4f4f4;
+      padding: 1px 5px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 15px;
+    }
+
+    th {
+      text-align: left;
+      border-bottom: 2px solid #ccc;
+      padding: 8px 12px;
+    }
+
+    td {
+      border-bottom: 1px solid #eee;
+      padding: 8px 12px;
+      vertical-align: top;
+    }
+
+    .note {
+      background: #fffbea;
+      border-left: 3px solid #e6b800;
+      padding: 10px 16px;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+
+    footer {
+      margin-top: 80px;
+      border-top: 1px solid #ccc;
+      padding-top: 16px;
+      font-size: 13px;
+      color: #999;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Cloud and DevOps Engineering: Part II</h1>
+  <p class="subtitle">Aalen University &nbsp;·&nbsp; Application & CI/CD Pipeline on Azure &nbsp;·&nbsp; Hüseyin Simsek &nbsp;·&nbsp; Summer Semester 2026</p>
+
+  <!-- 1. WHAT IS THIS -->
+  <h2>1. What is this?</h2>
+  <p>
+    This project extends the infrastructure from Part I with a Flask web application and a fully automated CI/CD pipeline.
+    The infrastructure itself (Resource Group, Storage Account, Key Vault, App Service Plan, Web App) is not modified — Part II only adds the application code, the pipeline, and a remote state backend on top of it.
+  </p>
+  <p>The following is added on top of Part I:</p>
+  <table>
+    <tr><th>Component</th><th>Purpose</th></tr>
+    <tr><td>Flask web application</td><td>Lists files in Blob Storage and provides an upload form</td></tr>
+    <tr><td>Remote state backend</td><td>Terraform state moved from local disk to Azure Storage</td></tr>
+    <tr><td>RBAC role assignments</td><td>Managed Identity granted access to Storage and Key Vault</td></tr>
+    <tr><td>Azure DevOps pipeline</td><td>Plan → Apply → Build → Deploy, fully automated</td></tr>
+    <tr><td>Workload Identity Federation</td><td>Pipeline authenticates to Azure without a stored secret</td></tr>
+  </table>
+
+  <!-- 2. PREREQUISITES -->
+  <h2>2. Prerequisites</h2>
+  <p>The following tools must be installed before running this project:</p>
+  <table>
+    <tr><th>Tool</th><th>Version</th><th>Download</th></tr>
+    <tr><td>Terraform</td><td>≥ 1.5.0</td><td>https://developer.hashicorp.com/terraform/install</td></tr>
+    <tr><td>Azure CLI</td><td>latest</td><td>https://learn.microsoft.com/cli/azure/install-azure-cli</td></tr>
+    <tr><td>Python</td><td>3.11</td><td>https://www.python.org/downloads</td></tr>
+    <tr><td>Git</td><td>any</td><td>https://git-scm.com</td></tr>
+    <tr><td>Azure Subscription</td><td>active</td><td>A student subscription is sufficient</td></tr>
+    <tr><td>Azure DevOps organization</td><td>free tier</td><td>Required for the pipeline</td></tr>
+  </table>
+
+  <h3>How to Run Locally (in PowerShell)</h3>
+  <pre># 1. Clone the repository
+git clone https://github.com/husii42/cloud-project.git
+cd cloud-project
+
+# 2. One-time: bootstrap the remote state backend
+cd bootstrap
+az login
+terraform init
+terraform apply
+# note the two outputs: resource_group_name, storage_account_name
+cd ..
+
+# 3. Create the variables file and set a unique project_name
+cp terraform.tfvars.example terraform.tfvars
+notepad terraform.tfvars
+
+# 4. Initialise Terraform with the remote backend (values from step 2)
+terraform init `
+  -backend-config="resource_group_name=&lt;from bootstrap output&gt;" `
+  -backend-config="storage_account_name=&lt;from bootstrap output&gt;" `
+  -backend-config="container_name=tfstate" `
+  -backend-config="key=cloud-project.tfstate"
+
+# 5. Preview and deploy the infrastructure
+terraform plan
+terraform apply
+
+# 6. Deploy the Flask application
+.\scripts\deploy.ps1 -ResourceGroupName "rg-&lt;project_name&gt;-dev" -AppServiceName "app-&lt;project_name&gt;-dev"</pre>
+
+  <div class="note">
+    For automated deployment via Azure DevOps instead of the manual script, see <code>documentation/AZURE_DEVOPS_SETUP.md</code> for the one-time setup steps, then push to <code>main</code>.
+  </div>
+
+  <!-- 3. REPOSITORY STRUCTURE -->
+  <h2>3. Repository Structure</h2>
+  <pre>Test_App/
+├── main.tf                    # Root module: connects all modules + RBAC role assignments
+├── backend.tf                 # Remote state backend (azurerm), config supplied at init time
+├── variables.tf               # Input variables (project_name, environment, location, tags)
+├── outputs.tf                 # Values displayed after terraform apply
+├── providers.tf               # Azure provider version and configuration
+├── terraform.tfvars.example   # Template for local variables (copy to .tfvars)
+├── modules/
+│   ├── storage/                # Unchanged from Part I (Storage Account + images container)
+│   ├── keyvault/                # RBAC-based Key Vault (replaces legacy Access Policies)
+│   └── appservice/               # App Service Plan + Web App with Managed Identity & app settings
+├── bootstrap/                 # Separate, one-time config: creates the Storage Account for remote state
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── application/                # The Flask web application (Part II)
+│   ├── app.py                  # Routes: "/" (list files), "/upload" (upload form), "/healthz"
+│   ├── requirements.txt        # Flask, gunicorn, azure-identity, azure-storage-blob
+│   └── templates/               # base.html, index.html, upload.html
+├── pipelines/
+│   └── azure-pipelines.yml     # 3-stage pipeline: TerraformPlan → TerraformApply → DeployApp
+├── scripts/
+│   └── deploy.ps1              # Manual local equivalent of the pipeline's build+deploy stage
+└── documentation/
+    └── AZURE_DEVOPS_SETUP.md   # One-time manual setup: Service Connection, pipeline variables</pre>
+
+  <h3>How the files work together</h3>
+  <p>
+    <code>backend.tf</code> points Terraform at a remote state file in Azure Storage instead of the local disk used in Part I; the actual storage account/resource group names are passed in at <code>terraform init</code> time (locally via <code>-backend-config</code>, in the pipeline via pipeline variables), so no environment-specific values are hardcoded in the repository.
+    <code>main.tf</code> builds on Part I's three modules by adding two <code>azurerm_role_assignment</code> resources: one grants the Web App's Managed Identity the <strong>Storage Blob Data Contributor</strong> role, the other grants <strong>Key Vault Secrets User</strong>.
+    These are placed in the root module rather than inside <code>modules/storage</code> or <code>modules/keyvault</code>, because the Managed Identity's <code>principal_id</code> does not exist until the Web App itself has been created — defining the role assignments at the root, unconditionally, lets Terraform defer them automatically instead of running into a "count cannot be determined" error.
+    <code>modules/appservice</code> configures the Web App's <code>app_settings</code> with the Storage Account name, container name, and Key Vault URI; <code>application/app.py</code> reads these at runtime and uses <code>DefaultAzureCredential</code> to authenticate — first via the Managed Identity, falling back to the Azure CLI login when run locally.
+    <code>pipelines/azure-pipelines.yml</code> then automates the entire flow: plan, apply, build, and deploy.
+  </p>
+
+  <!-- 4. APPROACH -->
+  <h2>4. Approach & Reasoning</h2>
+
+  <h3>Building on Part I without modifying it</h3>
+  <p>
+    As planned in Part I, none of the existing modules needed to be changed. The Storage, Key Vault, and App Service modules are reused as-is; Part II only adds the remote backend, the RBAC role assignments, the application code, and the pipeline on top.
+    This confirms the benefit of the modular structure chosen in Part I: extending the project was additive rather than requiring edits to existing, already-applied resources.
+  </p>
+
+  <h3>Secret-less authentication end-to-end</h3>
+  <p>
+    Part I already avoided storing the Storage Account's access key directly in application code by writing it into Key Vault and giving the App Service a System-Assigned Managed Identity.
+    Part II completes this pattern: the Flask application never reads that Key Vault secret at all.
+    Instead, it uses the <code>azure-identity</code> SDK's <code>DefaultAzureCredential</code>, which automatically picks up the Web App's Managed Identity when running on App Service, and falls back to the developer's <code>az login</code> session when running locally.
+    Combined with the RBAC role assignments in <code>main.tf</code> (Storage Blob Data Contributor, Key Vault Secrets User), the application can list and upload blobs without a single password, connection string, or access key ever appearing in code, environment variables, or App Settings.
+  </p>
+  <p>
+    The same secret-less idea is extended to the pipeline: instead of a Service Principal with a client secret, the Azure DevOps Service Connection uses <strong>Workload Identity Federation</strong>, in which Azure DevOps exchanges a short-lived OIDC token for an Azure access token at run time.
+    No credential is generated or stored anywhere for the pipeline to authenticate with Azure.
+  </p>
+  <table>
+    <tr><th>Identity</th><th>Type</th><th>Access granted</th></tr>
+    <tr><td>Developer (<code>az login</code>)</td><td>Azure CLI user (Microsoft Entra)</td><td>Key Vault Administrator (RBAC)</td></tr>
+    <tr><td>Pipeline (OIDC)</td><td>Service Principal, Workload Identity Federation, no stored secret</td><td>Contributor on the subscription</td></tr>
+    <tr><td>App Service</td><td>System-Assigned Managed Identity</td><td>Storage Blob Data Contributor; Key Vault Secrets User</td></tr>
+  </table>
+
+  <h3>RBAC instead of Access Policies</h3>
+  <p>
+    Part I's Key Vault used legacy Access Policies. Part II switches the Key Vault module to <code>enable_rbac_authorization = true</code>, using <code>azurerm_role_assignment</code> resources instead.
+    This keeps authorization consistent with how access to the Storage Account is granted (also via role assignments), so every identity in the project — the developer, the pipeline, and the App Service — is authorized through the same model rather than mixing two different ones.
+  </p>
+
+  <h3>Remote state backend</h3>
+  <p>
+    Part I deliberately kept the Terraform state local, noting the "chicken-and-egg" problem: the Storage Account that would hold the state is itself created by the same Terraform run.
+    Part II solves this with a separate <code>bootstrap/</code> configuration: a small, standalone Terraform project that is applied once, manually, purely to create a Storage Account and container for the <em>main</em> configuration's state.
+    Once that exists, <code>backend.tf</code> in the main configuration points to it via <code>-backend-config</code> (kept out of the repository so no environment-specific values are committed), allowing both the developer's machine and the CI/CD pipeline to share one consistent state file instead of each having a conflicting local copy.
+  </p>
+
+  <h3>Pipeline structure: Plan, Apply, Deploy</h3>
+  <p>
+    The pipeline (<code>pipelines/azure-pipelines.yml</code>) is split into three stages rather than one long script:
+  </p>
+  <table>
+    <tr><th>Stage</th><th>Description</th></tr>
+    <tr><td>TerraformPlan</td><td>Runs on every push; produces a plan as a reviewable artifact</td></tr>
+    <tr><td>TerraformApply</td><td>Applies that exact plan, but only on the main branch</td></tr>
+    <tr><td>DeployApp</td><td>Builds and deploys the Flask app, only after the apply succeeds</td></tr>
+  </table>
+  <p>
+    Separating Plan from Apply means a <code>terraform plan</code> runs (and can be inspected) on every push without ever touching real infrastructure, and the Apply stage always applies the <em>exact</em> plan that was reviewed — not a freshly recomputed one that could have drifted.
+    Gating Apply and Deploy on the <code>main</code> branch and on the previous stage's success prevents partially-applied infrastructure or deploying application code against infrastructure that failed to provision.
+  </p>
+
+  <h3>Why App Service deployment instead of containers</h3>
+  <p>
+    The Flask app is deployed as a zipped folder via Azure's built-in zip-deploy / Oryx build (<code>SCM_DO_BUILD_DURING_DEPLOYMENT = true</code>), rather than as a Docker container.
+    For a small, single-process Flask app with few dependencies, this avoids maintaining a Dockerfile and a container registry; Azure builds the Python environment directly from <code>requirements.txt</code> on deployment.
+    The trade-off is less control over the exact runtime environment than a custom container image would give — acceptable here given the application's simplicity.
+  </p>
+
+  <!-- 5. KNOWN LIMITATIONS -->
+  <h2>5. Known Limitations</h2>
+
+  <h3>Cost</h3>
+  <p>
+    In addition to the App Service Plan (B1, ~€13/month) from Part I, the remote state Storage Account adds a small additional cost (a few cents/month for a single state file).
+    If <code>terraform destroy</code> is not run after the project is complete, both the main infrastructure and the bootstrap Storage Account continue to incur charges.
+  </p>
+
+  <h3>No staging environment</h3>
+  <p>
+    The pipeline applies directly to a single <code>dev</code> environment on every push to <code>main</code>.
+    In a production setup, a <code>staging</code> stage with manual approval would sit between Plan and Apply so changes can be verified before reaching the environment that's actually in use.
+  </p>
+
+  <h3>Pipeline approval gate</h3>
+  <p>
+    The <code>production</code> Azure DevOps environment can be configured to require manual approval before <code>TerraformApply</code> and <code>DeployApp</code> run.
+    For this student project, that approval gate is optional and can be skipped — but in a team setting, it would be the main safeguard against an unreviewed change going live automatically.
+  </p>
+
+  <h3>Upload validation is basic</h3>
+  <p>
+    The upload form (<code>application/app.py</code>) checks file extensions against an allow-list and limits uploads to 25 MB, but performs no virus scanning or content inspection.
+    For a project storing user-uploaded files in a publicly-readable container, a production setup would add antivirus scanning (e.g. Microsoft Defender for Storage) before a file is exposed.
+  </p>
+
+  <h3>No application monitoring</h3>
+  <p>
+    As in Part I, there are no alerts or Application Insights configured for the running application.
+    The <code>/healthz</code> endpoint exists and is suitable for a future uptime check or pipeline smoke test, but nothing currently consumes it automatically.
+  </p>
+
+  <h3>Local script vs. pipeline can drift</h3>
+  <p>
+    <code>scripts/deploy.ps1</code> duplicates the build-and-deploy logic that also lives in <code>pipelines/azure-pipelines.yml</code>, so the two could diverge over time if one is updated and not the other.
+    This is accepted here since the script exists purely as a faster manual fallback during development, not as the primary deployment path.
+  </p>
+
+  <!-- 6. SUMMARY -->
+  <h2>6. Summary</h2>
+  <p>
+    Part II completes the project end-to-end: from <code>terraform apply</code> provisioning the infrastructure, through a Flask application that reads and writes Blob Storage using only Managed Identity (no secrets in code or configuration), to an Azure DevOps pipeline that plans, applies, builds, and deploys automatically on every push to <code>main</code> — itself authenticating via Workload Identity Federation rather than a stored credential.
+    The infrastructure modules from Part I required no changes; everything in Part II was added on top.
+  </p>
+
+  <footer>
+    Cloud & DevOps Engineering &nbsp;·&nbsp; Aalen University &nbsp;·&nbsp; Part II · Application & CI/CD on Azure
+  </footer>
+
+</body>
+</html>
